@@ -110,6 +110,9 @@ public class PlayScreen extends ScreenAdapter {
     private int joystickPointer = -1;
     private int actionPointer = -1;
 
+    private float networkSendAccumulator = 0f;
+    private boolean previousJumpHeld = false;
+
     public PlayScreen(GameApp game, int levelIndex) {
         this.game = game;
         this.levelIndex = levelIndex;
@@ -136,10 +139,16 @@ public class PlayScreen extends ScreenAdapter {
         releaseTouchControls();
         resetKeyboardInput();
         updateTouchControlLayout();
+
+        if (!GameSession.get().isConnected()) {
+            GameSession.get().connect(GameSession.get().getRequestedNickname());
+        }
     }
 
     @Override
     public void hide() {
+        // Para pruebas puedes dejar la conexión viva al volver al menú.
+        // GameSession.get().disconnect();
         AndroidHardwareInputBridge.setCaptureEnabled(false);
         Gdx.input.setInputProcessor(null);
         resetKeyboardInput();
@@ -148,6 +157,7 @@ public class PlayScreen extends ScreenAdapter {
     @Override
     public void render(float delta) {
         updateInputState();
+        sendInputToServer(delta);
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             returnToMenu();
@@ -1364,6 +1374,27 @@ public class PlayScreen extends ScreenAdapter {
             }
             out.set(points.peek());
         }
+    }
+
+    private void sendInputToServer(float delta) {
+        networkSendAccumulator += Math.max(0f, delta);
+
+        boolean shouldSend = networkSendAccumulator >= 1f / 30f
+            || inputState.jumpPressed
+            || inputState.jumpHeld != previousJumpHeld;
+
+        if (!shouldSend) {
+            return;
+        }
+
+        networkSendAccumulator = 0f;
+        previousJumpHeld = inputState.jumpHeld;
+
+        GameSession.get().sendInput(
+            inputState.moveX,
+            inputState.jumpPressed,
+            inputState.jumpHeld
+        );
     }
 
     private enum DebugOverlayMode {

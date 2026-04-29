@@ -53,7 +53,7 @@
           "y": 386,
           "width": 32,
           "height": 32,
-          "imageFile": "media/imatge-removebg-preview(2)(1).png",
+          "imageFile": "media/Mushroom Idle.png",
           "flipX": false,
           "flipY": false,
           "depth": 0.0,
@@ -91,7 +91,7 @@
   "mediaAssets": [
     {
       "name": "Mushroom Left",
-      "fileName": "media/imatge-removebg-preview(4).png",
+      "fileName": "media/Mushroom Left.png",
       "mediaType": "spritesheet",
       "tileWidth": 32,
       "tileHeight": 32,
@@ -100,7 +100,7 @@
     },
     {
       "name": "Mushroom Idle",
-      "fileName": "media/imatge-removebg-preview(2)(1).png",
+      "fileName": "media/Mushroom Idle.png",
       "mediaType": "spritesheet",
       "tileWidth": 32,
       "tileHeight": 32,
@@ -127,7 +127,7 @@
     },
     {
       "name": "Mushroom Right",
-      "fileName": "media/imatge-removebg-preview(2).png",
+      "fileName": "media/Mushroom Right.png",
       "mediaType": "spritesheet",
       "tileWidth": 32,
       "tileHeight": 32,

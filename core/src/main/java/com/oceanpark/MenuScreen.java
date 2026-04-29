@@ -10,212 +10,154 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector3;
-import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
 public class MenuScreen extends ScreenAdapter {
-
     private static final float WORLD_WIDTH = 1280f;
     private static final float WORLD_HEIGHT = 720f;
-    private static final float BLINK_INTERVAL_SECONDS = 0.42f;
 
-    private static final Color BACKGROUND = Color.valueOf("000000");
+    private static final Color BG = Color.valueOf("061007");
     private static final Color PRIMARY = Color.valueOf("35FF74");
-    private static final Color DIM = Color.valueOf("146F34");
-    private static final Color SELECTED_FILL = Color.valueOf("0E1E12");
-    private static final Color UNSELECTED_FILL = Color.valueOf("060B08");
-    private static final Color UNSELECTED_TEXT = Color.valueOf("23AA54");
-    private static final Color FOOTER = Color.valueOf("21964A");
+    private static final Color DIM = Color.valueOf("21964A");
+    private static final Color PANEL = Color.valueOf("0E1E12");
+    private static final Color PANEL_DARK = Color.valueOf("07140A");
 
     private final GameApp game;
     private final Viewport viewport = new FitViewport(WORLD_WIDTH, WORLD_HEIGHT);
-    private final Vector3 pointer = new Vector3();
     private final GlyphLayout layout = new GlyphLayout();
-    private final Array<Rectangle> optionRects = new Array<>();
-    private final Array<String> options;
+    private final Vector3 pointer = new Vector3();
 
-    private int selectedIndex = 0;
-    private boolean cursorVisible = true;
-    private float blinkAccumulator = 0f;
+    private final Rectangle nicknameBox = new Rectangle(340, 440, 600, 64);
+    private final Rectangle playButton = new Rectangle(490, 340, 300, 74);
+
+    private final StringBuilder nickname = new StringBuilder("Player");
+    private boolean editingNickname = true;
 
     private final InputAdapter input = new InputAdapter() {
         @Override
+        public boolean keyTyped(char character) {
+            if (!editingNickname) {
+                return false;
+            }
+
+            if (character == '\b') {
+                if (nickname.length() > 0) {
+                    nickname.deleteCharAt(nickname.length() - 1);
+                }
+                return true;
+            }
+
+            if (character == '\r' || character == '\n') {
+                startGame();
+                return true;
+            }
+
+            if (nickname.length() < 16
+                && (Character.isLetterOrDigit(character) || character == '_' || character == '-')) {
+                nickname.append(character);
+                return true;
+            }
+
+            return false;
+        }
+
+        @Override
         public boolean keyDown(int keycode) {
-            if (keycode == Input.Keys.UP || keycode == Input.Keys.W) {
-                moveSelection(-1);
-                return true;
-            }
-
-            if (keycode == Input.Keys.DOWN || keycode == Input.Keys.S) {
-                moveSelection(1);
-                return true;
-            }
-
             if (keycode == Input.Keys.ENTER || keycode == Input.Keys.SPACE) {
-                startSelectedLevel();
+                startGame();
                 return true;
             }
-
             return false;
         }
 
         @Override
         public boolean touchDown(int screenX, int screenY, int pointerId, int button) {
-            if (button != Input.Buttons.LEFT) {
-                return false;
+            viewport.unproject(pointer.set(screenX, screenY, 0));
+            editingNickname = nicknameBox.contains(pointer.x, pointer.y);
+            if (playButton.contains(pointer.x, pointer.y)) {
+                startGame();
+                return true;
             }
-
-            viewport.unproject(pointer.set(screenX, screenY, 0f));
-            for (int i = 0; i < optionRects.size; i++) {
-                if (optionRects.get(i).contains(pointer.x, pointer.y)) {
-                    selectedIndex = i;
-                    startSelectedLevel();
-                    return true;
-                }
-            }
-
-            return false;
+            return true;
         }
     };
 
     public MenuScreen(GameApp game) {
         this.game = game;
-        this.options = game.getMenuOptions();
-        rebuildOptionRects();
     }
 
     @Override
     public void show() {
         Gdx.input.setInputProcessor(input);
+        Gdx.input.setOnscreenKeyboardVisible(true);
+    }
+
+    @Override
+    public void hide() {
+        Gdx.input.setOnscreenKeyboardVisible(false);
     }
 
     @Override
     public void render(float delta) {
-        updateBlink(delta);
-
-        Gdx.gl.glClearColor(BACKGROUND.r, BACKGROUND.g, BACKGROUND.b, BACKGROUND.a);
+        Gdx.gl.glClearColor(BG.r, BG.g, BG.b, BG.a);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-
         viewport.apply();
 
         ShapeRenderer shapes = game.getShapeRenderer();
         shapes.setProjectionMatrix(viewport.getCamera().combined);
+        shapes.begin(ShapeRenderer.ShapeType.Filled);
+        shapes.setColor(PANEL_DARK);
+        shapes.rect(280, 210, 720, 360);
+        shapes.setColor(editingNickname ? PANEL : PANEL_DARK);
+        shapes.rect(nicknameBox.x, nicknameBox.y, nicknameBox.width, nicknameBox.height);
+        shapes.setColor(PRIMARY);
+        shapes.rect(playButton.x, playButton.y, playButton.width, playButton.height);
+        shapes.end();
 
-        renderOptions(shapes);
+        shapes.begin(ShapeRenderer.ShapeType.Line);
+        shapes.setColor(PRIMARY);
+        shapes.rect(280, 210, 720, 360);
+        shapes.rect(nicknameBox.x, nicknameBox.y, nicknameBox.width, nicknameBox.height);
+        shapes.setColor(DIM);
+        shapes.rect(playButton.x, playButton.y, playButton.width, playButton.height);
+        shapes.end();
 
         SpriteBatch batch = game.getBatch();
         batch.setProjectionMatrix(viewport.getCamera().combined);
         batch.begin();
-        renderTexts(batch, game.getFont());
+
+        BitmapFont font = game.getFont();
+        drawCentered(batch, font, "OCEAN PARK", 610, 3.2f, PRIMARY);
+        drawCentered(batch, font, "Nickname", 525, 1.4f, DIM);
+        drawCentered(batch, font, nickname.toString() + (editingNickname ? "_" : ""), 485, 1.8f, PRIMARY);
+        drawCentered(batch, font, "PLAY", 388, 2.0f, Color.BLACK);
+        drawCentered(batch, font, GameSession.get().getStatus(), 270, 1.0f, DIM);
+        drawCentered(batch, font, "ENTER/SPACE: PLAY", 235, 1.0f, DIM);
+
         batch.end();
+
+        font.getData().setScale(1f);
+        font.setColor(Color.WHITE);
     }
 
-    private void updateBlink(float delta) {
-        blinkAccumulator += delta;
-        if (blinkAccumulator >= BLINK_INTERVAL_SECONDS) {
-            blinkAccumulator -= BLINK_INTERVAL_SECONDS;
-            cursorVisible = !cursorVisible;
-        }
-    }
-
-    private void renderOptions(ShapeRenderer shapes) {
-        shapes.begin(ShapeRenderer.ShapeType.Filled);
-        for (int i = 0; i < optionRects.size; i++) {
-            shapes.setColor(i == selectedIndex ? SELECTED_FILL : UNSELECTED_FILL);
-            Rectangle rect = optionRects.get(i);
-            shapes.rect(rect.x, rect.y, rect.width, rect.height);
-        }
-        shapes.end();
-
-        shapes.begin(ShapeRenderer.ShapeType.Line);
-        for (int i = 0; i < optionRects.size; i++) {
-            shapes.setColor(i == selectedIndex ? PRIMARY : DIM);
-            Rectangle rect = optionRects.get(i);
-            shapes.rect(rect.x, rect.y, rect.width, rect.height);
-        }
-        shapes.end();
-    }
-
-    private void renderTexts(SpriteBatch batch, BitmapFont font) {
-        drawCenteredText(batch, font, "Game Example", WORLD_HEIGHT * 0.82f, 3.2f, PRIMARY);
-        drawCenteredText(batch, font, "SELECT LEVEL", WORLD_HEIGHT * 0.70f, 2f, DIM);
-
-        for (int i = 0; i < optionRects.size; i++) {
-            Rectangle rect = optionRects.get(i);
-            boolean selected = i == selectedIndex;
-            String prefix = selected && cursorVisible ? "> " : "  ";
-            Color textColor = selected ? PRIMARY : UNSELECTED_TEXT;
-            drawCenteredText(batch, font, prefix + options.get(i), rect.y + rect.height * 0.70f, 1.9f, textColor);
-        }
-
-        drawCenteredText(
-            batch,
-            font,
-            "ARROWS/W,S: MOVE   ENTER/SPACE: PLAY   MOUSE: CLICK",
-            36f,
-            1.1f,
-            FOOTER
-        );
-    }
-
-    private void drawCenteredText(SpriteBatch batch, BitmapFont font, String text, float y, float scale, Color color) {
+    private void drawCentered(SpriteBatch batch, BitmapFont font, String text, float y, float scale, Color color) {
         font.getData().setScale(scale);
         font.setColor(color);
         layout.setText(font, text);
-        float x = (WORLD_WIDTH - layout.width) * 0.5f;
-        font.draw(batch, layout, x, y);
-        font.getData().setScale(1f);
+        font.draw(batch, text, (WORLD_WIDTH - layout.width) * 0.5f, y);
     }
 
-    private void moveSelection(int delta) {
-        if (options.size == 0) {
-            return;
-        }
-
-        selectedIndex += delta;
-        if (selectedIndex < 0) {
-            selectedIndex = options.size - 1;
-        } else if (selectedIndex >= options.size) {
-            selectedIndex = 0;
-        }
-        cursorVisible = true;
-        blinkAccumulator = 0f;
-    }
-
-    private void startSelectedLevel() {
-        if (options.size == 0) {
-            return;
-        }
-        game.setScreen(new LoadingScreen(game, selectedIndex));
-    }
-
-    private void rebuildOptionRects() {
-        optionRects.clear();
-
-        float width = MathUtils.clamp(WORLD_WIDTH * 0.46f, 220f, 420f);
-        float buttonHeight = 60f;
-        float spacing = 18f;
-        float startY = WORLD_HEIGHT * 0.55f;
-        float centerX = WORLD_WIDTH * 0.5f;
-
-        for (int i = 0; i < Math.max(1, options.size); i++) {
-            float centerY = startY - i * (buttonHeight + spacing);
-            optionRects.add(new Rectangle(
-                centerX - width * 0.5f,
-                centerY - buttonHeight * 0.5f,
-                width,
-                buttonHeight
-            ));
-        }
+    private void startGame() {
+        String nick = GameSession.sanitizeNickname(nickname.toString());
+        GameSession.get().setRequestedNickname(nick);
+        game.setScreen(new LoadingScreen(game, 0));
     }
 
     @Override
     public void resize(int width, int height) {
         viewport.update(width, height, true);
-        rebuildOptionRects();
     }
 }
